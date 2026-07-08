@@ -21,6 +21,12 @@
 <meta name="twitter:description" content="A deliciously juicy match-3 game. Everyone gets the same daily board — can you beat my score?">
 <meta name="twitter:image" content="https://solid-apps.github.io/candycascade/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍬</text></svg>">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Candy Cascade">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body { height:100%; overflow:hidden; }
@@ -201,6 +207,7 @@
     <button class="iconBtn" id="muteBtn">🔊</button>
     <button class="iconBtn" id="musicBtn">🎵</button>
     <button class="iconBtn" id="statsBtn">📊</button>
+    <button class="iconBtn" id="installBtn" style="display:none">📲</button>
     <span>Best: <span id="best">0</span></span>
     <span>·</span><span>Reached lvl <span id="bestLvl">1</span></span>
   </div>
@@ -1829,6 +1836,26 @@ function resize(){
   }
 }
 window.addEventListener('resize', resize);
+
+/* ---------- PWA ---------- */
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+let installPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  installPrompt = e;
+  $('installBtn').style.display = '';
+});
+$('installBtn').onclick = async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  await installPrompt.userChoice.catch(() => {});
+  installPrompt = null;
+  $('installBtn').style.display = 'none';
+};
+window.addEventListener('appinstalled', () => {
+  $('installBtn').style.display = 'none';
+  toast('Installed — see you on the home screen! 🍬');
+});
 
 /* ---------- boot ---------- */
 resize();
