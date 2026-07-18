@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Candy Cascade 🍬 — the sweetest match-3</title>
 <meta name="description" content="Candy Cascade — a deliciously juicy free match-3 puzzle game. Swap, match, and cascade your way through endless sweet levels!">
 <meta name="theme-color" content="#5b1076">
@@ -42,7 +42,8 @@
           animation: drift 18s ease-in-out infinite alternate; }
   @keyframes drift { from{ transform:translate(0,0) scale(1);} to{ transform:translate(60px,-80px) scale(1.25);} }
 
-  #wrap { position:relative; z-index:1; width:100%; max-width:540px; padding:8px 10px;
+  #wrap { position:relative; z-index:1; width:100%; max-width:540px;
+          padding:8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
           display:flex; flex-direction:column; align-items:center; height:100%; }
 
   header { width:100%; text-align:center; padding:4px 0 2px; }
@@ -105,10 +106,16 @@
         box-shadow:0 5px 0 #8a5200, 0 8px 20px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.6); }
   button.btn.gold:active { box-shadow:0 1px 0 #8a5200, 0 3px 10px rgba(0,0,0,.4); }
   .btn .sm { display:block; font-size:11px; font-weight:600; opacity:.9; letter-spacing:.5px; margin-top:2px; }
+  button.btn:focus-visible, .iconBtn:focus-visible { outline:3px solid #ffe57a; outline-offset:3px; }
+  @media (hover:hover){
+    button.btn:hover { filter:brightness(1.08); }
+    .iconBtn:hover { background:rgba(255,255,255,.25); }
+  }
   #dailyStat { font-size:13px; font-weight:700; min-height:1em; }
   #dailyTxt b { color:#ffe57a; }
 
-  #footer { display:flex; gap:10px; align-items:center; margin-top:8px; font-size:12px; opacity:.9; }
+  #footer { display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap;
+            margin-top:8px; font-size:12px; opacity:.9; }
   .iconBtn { background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); color:#fff;
              border-radius:10px; font-size:16px; padding:4px 10px; cursor:pointer; }
   .iconBtn.off { opacity:.45; }
@@ -127,6 +134,10 @@
   .howto { display:flex; gap:18px; font-size:13px; opacity:.95; }
   .howto div { max-width:90px; }
   .howto .ic { font-size:28px; }
+  @media (prefers-reduced-motion: reduce){
+    .blob { animation:none; }
+    #movesPill.low .val { animation:none; }
+  }
 </style>
 </head>
 <body>
@@ -203,11 +214,11 @@
   </div>
 
   <div id="footer">
-    <button class="iconBtn" id="homeBtn">🏠</button>
-    <button class="iconBtn" id="muteBtn">🔊</button>
-    <button class="iconBtn" id="musicBtn">🎵</button>
-    <button class="iconBtn" id="statsBtn">📊</button>
-    <button class="iconBtn" id="installBtn" style="display:none">📲</button>
+    <button class="iconBtn" id="homeBtn" aria-label="Home" title="Home">🏠</button>
+    <button class="iconBtn" id="muteBtn" aria-label="Toggle sound" title="Sound">🔊</button>
+    <button class="iconBtn" id="musicBtn" aria-label="Toggle music" title="Music">🎵</button>
+    <button class="iconBtn" id="statsBtn" aria-label="Statistics" title="Stats">📊</button>
+    <button class="iconBtn" id="installBtn" style="display:none" aria-label="Install app" title="Install">📲</button>
     <span>Best: <span id="best">0</span></span>
     <span>·</span><span>Reached lvl <span id="bestLvl">1</span></span>
   </div>
@@ -250,7 +261,8 @@ let selected = null, dragStart = null, lastSwap = null;
 let shake = 0, lastAction = performance.now(), hintPair = null, hintT = 0;
 let best = +(localStorage.cc_best || 0), bestLvl = +(localStorage.cc_bestlvl || 1);
 let muted = localStorage.cc_muted === '1';
-$('best').textContent = best; $('bestLvl').textContent = bestLvl;
+const REDUCED_MOTION = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+$('best').textContent = best.toLocaleString(); $('bestLvl').textContent = bestLvl;
 $('muteBtn').textContent = muted ? '🔇' : '🔊';
 
 /* ---------- daily challenge ---------- */
@@ -319,7 +331,7 @@ function playBeat(t, i){
   mnote(mfreq(chord[seq[step]] + 12), t, .24, 'triangle', .05);
 }
 function startMusic(){
-  if (!musicOn || musicTimer || !AC) return;
+  if (!musicOn || muted || musicTimer || !AC) return;
   if (!musicGain){ musicGain = AC.createGain(); musicGain.gain.value = .55; musicGain.connect(AC.destination); }
   nextBeat = AC.currentTime + .1;
   musicTimer = setInterval(() => {
@@ -1297,7 +1309,8 @@ function refreshStartUI(){
 
 /* ---------- share ---------- */
 async function share(){
-  const txt = `🍬 I scored ${totalScore.toLocaleString()} and reached level ${level} in Candy Cascade! Can you beat me? 🍭 ${location.href}`;
+  const url = location.href.split(/[?#]/)[0];
+  const txt = `🍬 I scored ${totalScore.toLocaleString()} and reached level ${level} in Candy Cascade! Can you beat me? 🍭 ${url}`;
   try {
     if (navigator.share) await navigator.share({ text: txt });
     else { await navigator.clipboard.writeText(txt); toast('Copied to clipboard! 📋'); }
@@ -1538,7 +1551,7 @@ function frame(now){
   // ---- draw ----
   ctx.clearRect(0, 0, cv.width, cv.height);
   ctx.save();
-  if (shake > 0) ctx.translate((Math.random()-.5)*shake*dpr, (Math.random()-.5)*shake*dpr);
+  if (shake > 0 && !REDUCED_MOTION) ctx.translate((Math.random()-.5)*shake*dpr, (Math.random()-.5)*shake*dpr);
 
   // checkerboard (skipping holes)
   for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++){
@@ -1720,14 +1733,15 @@ function cellAt(e){
 }
 cv.addEventListener('pointerdown', e => {
   audio();
-  if (busy) return;
+  if (busy || !e.isPrimary) return;
   const p = cellAt(e);
   if (!inb(p.r, p.c)) return;
+  try { cv.setPointerCapture(e.pointerId); } catch(err){}   // keep pointerup even off-canvas
   dragStart = p;
   lastAction = performance.now(); hintPair = null;
 });
 cv.addEventListener('pointermove', e => {
-  if (!dragStart || busy) return;
+  if (!e.isPrimary || !dragStart || busy) return;
   const p = cellAt(e);
   const dx = p.fx - dragStart.fx, dy = p.fy - dragStart.fy;
   if (Math.hypot(dx, dy) > .35){
@@ -1738,9 +1752,9 @@ cv.addEventListener('pointermove', e => {
   }
 });
 cv.addEventListener('pointerup', e => {
-  if (!dragStart) return;
+  if (!e.isPrimary || !dragStart) return;
   const p = dragStart; dragStart = null;
-  if (busy) return;
+  if (busy || !inb(cellAt(e).r, cellAt(e).c)) return;   // released off the board: cancel, don't select
   if (selected){
     if (Math.abs(selected.r-p.r) + Math.abs(selected.c-p.c) === 1){
       trySwap(selected.r, selected.c, p.r, p.c);
@@ -1790,6 +1804,7 @@ $('dailyClassicBtn').onclick = () => { clearInterval(cdTimer); $('dailyOv').clas
 $('muteBtn').onclick = () => {
   muted = !muted; localStorage.cc_muted = muted ? '1' : '0';
   $('muteBtn').textContent = muted ? '🔇' : '🔊';
+  muted ? stopMusic() : (AC && startMusic());
 };
 $('musicBtn').onclick = () => {
   musicOn = !musicOn; localStorage.cc_music = musicOn ? '1' : '0';
@@ -1820,6 +1835,10 @@ function showStats(){
 }
 $('statsBtn').onclick = showStats;
 $('statsClose').onclick = () => $('statsOv').classList.remove('show');
+window.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && $('statsOv').classList.contains('show'))
+    $('statsOv').classList.remove('show');
+});
 
 /* ---------- sizing ---------- */
 function resize(){
